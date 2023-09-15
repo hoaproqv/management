@@ -7,6 +7,7 @@ import cors from "cors";
 import helmet from "helmet";
 import mongoose from "mongoose";
 import indexRouter from "./router/index";
+import { string } from "joi";
 
 dotenv.config();
 
@@ -31,13 +32,10 @@ app.listen(PORT, () => {
 /**
  * MongoBD connection
  */
-mongoose
-  .connect(
-    "mongodb+srv://hanminhhoa1997:Hanhoa1997@hanhoa.xtppyqs.mongodb.net/management",
-  )
-  .then(() => {
-    console.log("Connect database MongoDB success");
-  });
+const mongoUri: any = process.env.MONGO_URI;
+mongoose.connect(mongoUri).then(() => {
+  console.log("Connect database MongoDB success");
+});
 
 app.use("/", indexRouter);
 
