@@ -7,7 +7,6 @@ import cors from "cors";
 import helmet from "helmet";
 import mongoose from "mongoose";
 import indexRouter from "./router/index";
-import { string } from "joi";
 
 dotenv.config();
 
