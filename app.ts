@@ -13,7 +13,7 @@ dotenv.config();
 /**
  * App Variables
  */
-const PORT: number = 3000;
+const PORT: number = parseInt((process.env.PORT as string) || "3000", 10);
 
 const app = express();
 /**
