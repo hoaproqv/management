@@ -12,7 +12,7 @@ const taskSchema = new mongoose_1.default.Schema({
         require: true,
         enum: ["pending", "working", "review", "done", "archive"],
     },
-    assignee: { type: String, require: true },
+    assignee: String,
     isDeleted: Boolean,
 }, {
     timestamps: true,

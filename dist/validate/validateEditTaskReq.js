@@ -9,9 +9,7 @@ const editTaskRequestBodySchema = joi_1.default.object()
     .keys({
     name: joi_1.default.string(),
     description: joi_1.default.string(),
-    status: joi_1.default.string()
-        .required()
-        .valid("pending", "working", "review", "done", "archive"),
+    status: joi_1.default.string().valid("pending", "working", "review", "done", "archive"),
     assignee: joi_1.default.string().length(24),
 })
     .required()

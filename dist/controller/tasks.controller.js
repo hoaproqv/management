@@ -3,8 +3,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteTask = exports.updateTask = exports.getTaskById = exports.getTasks = exports.createTask = void 0;
+exports.unassignTask = exports.deleteTask = exports.updateTask = exports.getTaskById = exports.getTasks = exports.createTask = void 0;
 const Task_1 = __importDefault(require("../model/Task"));
+const User_1 = __importDefault(require("../model/User"));
 /**
  * @route POST api/tasks
  * @description Create a task
@@ -23,10 +24,10 @@ const createTask = async (req, res, next) => {
                 assignee: req.body.assignee,
                 isDeleted: false,
             };
-            await Task_1.default.create(data);
+            const taskCreated = await Task_1.default.create(data);
             res.status(200).send({
                 message: "Create Task Successfully!",
-                data: { task: data },
+                data: { task: taskCreated },
             });
         }
     }
@@ -70,7 +71,12 @@ const getTasks = async (req, res, next) => {
                 sort.updatedAt = 1;
             }
         }
-        let getTasks = await Task_1.default.find(query).sort(sort);
+        let getTasks = await Task_1.default.find(query)
+            .populate({
+            path: "assignee",
+            model: "User",
+        })
+            .sort(sort);
         const total = Math.ceil(getTasks.length / limit);
         if (total > limit) {
             const startPoint = (page - 1) * limit;
@@ -95,7 +101,10 @@ exports.getTasks = getTasks;
 const getTaskById = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const task = await Task_1.default.findById(id);
+        const task = await Task_1.default.findOne({ _id: id, isDeleted: false }).populate({
+            path: "assignee",
+            model: "User",
+        });
         if (task) {
             res.status(200).send({
                 message: "Get task successfully!",
@@ -119,19 +128,32 @@ const updateTask = async (req, res, next) => {
     try {
         const { id } = req.params;
         const data = req.body;
-        const checkTask = await Task_1.default.findById(id);
-        if (checkTask) {
-            let taskUpdate;
-            if (checkTask.status === "done" || "archive") {
-                if (data.status === "archive") {
-                    taskUpdate = await Task_1.default.findByIdAndUpdate(id, data, { new: true });
-                }
-                else {
-                    throw new Error("You only change status of task from done to archive if status is done");
-                }
+        const checkTask = await Task_1.default.findOne({ _id: id, isDeleted: false });
+        if (!checkTask) {
+            throw new Error("Task not found");
+        }
+        if (data.assignee) {
+            const checkUser = await User_1.default.findById(data.assignee);
+            if (!checkUser) {
+                throw new Error("Can't find user with assignee");
+            }
+        }
+        let taskUpdate;
+        if (checkTask.status !== "archive") {
+            if (checkTask.status !== "done") {
+                taskUpdate = await Task_1.default.findByIdAndUpdate(id, data, {
+                    new: true,
+                }).populate({ path: "assignee", model: "User" });
             }
             else {
-                taskUpdate = await Task_1.default.findByIdAndUpdate(id, data, { new: true });
+                if (data.status === "archive") {
+                    taskUpdate = await Task_1.default.findByIdAndUpdate(id, data, {
+                        new: true,
+                    }).populate({ path: "assignee", model: "User" });
+                }
+                else {
+                    throw new Error("This task can only change its status to archive");
+                }
             }
             res.status(200).send({
                 message: "Task updated successfully",
@@ -139,7 +161,7 @@ const updateTask = async (req, res, next) => {
             });
         }
         else {
-            throw new Error("Task not found");
+            throw new Error("Can't change status of task");
         }
     }
     catch (err) {
@@ -154,11 +176,10 @@ exports.updateTask = updateTask;
 const deleteTask = async (req, res, next) => {
     try {
         const { id } = req.params;
-        const taskDelete = await Task_1.default.findByIdAndUpdate(id, { isDeleted: true }, { new: true });
+        const taskDelete = await Task_1.default.findOneAndUpdate({ _id: id, isDeleted: false }, { isDeleted: true }, { new: true });
         if (taskDelete) {
             res.status(200).send({
-                message: "Delete Task Successfully!",
-                data: { task: taskDelete },
+                message: `Task ${taskDelete.name} deleted successfully`,
             });
         }
         else {
@@ -170,4 +191,28 @@ const deleteTask = async (req, res, next) => {
     }
 };
 exports.deleteTask = deleteTask;
+const unassignTask = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const taskUnassigned = await Task_1.default.findOne({
+            _id: id,
+            isDeleted: false,
+        });
+        if (taskUnassigned) {
+            taskUnassigned.set("assignee", undefined, { strict: false });
+            taskUnassigned.save();
+            res.status(200).send({
+                message: `Task ${taskUnassigned.name} unassigned`,
+                data: { task: taskUnassigned },
+            });
+        }
+        else {
+            throw new Error("Task not found");
+        }
+    }
+    catch (error) {
+        next(error);
+    }
+};
+exports.unassignTask = unassignTask;
 //# sourceMappingURL=tasks.controller.js.map

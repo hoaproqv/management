@@ -14,5 +14,6 @@ router.get("/:id", validateIdMongoBD_1.validateId, tasks_controller_1.getTaskByI
 router.post("/", validateCreateTaskReq_1.validateCreateTaskRequest, tasks_controller_1.createTask);
 router.put("/:id", validateIdMongoBD_1.validateId, validateEditTaskReq_1.validateEditTaskRequest, tasks_controller_1.updateTask);
 router.delete("/:id", validateIdMongoBD_1.validateId, tasks_controller_1.deleteTask);
+router.patch("/:id", validateIdMongoBD_1.validateId, tasks_controller_1.unassignTask);
 exports.default = router;
 //# sourceMappingURL=task.api.js.map
