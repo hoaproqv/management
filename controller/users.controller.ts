@@ -111,12 +111,16 @@ export const getAllTasksOfUser = async (
 ) => {
   try {
     const { id } = req.params;
-    const user = await User.findById(id);
+
+    const user = await User.findOne({ _id: id, isDeleted: false });
     if (user) {
-      const tasksOfUser = await Task.find({ assignee: id });
+      const tasksOfUser = await Task.find({ assignee: id }).populate({
+        path: "assignee",
+        model: "User",
+      });
       if (tasksOfUser) {
         res.status(200).send({
-          message: `Get tasks of ${user.name}`,
+          message: `Get tasks of ${user.name} success`,
           data: { task: tasksOfUser },
         });
       }
@@ -148,6 +152,10 @@ export const updateUser = async (
   try {
     const { id } = req.params;
     const data = req.body;
+    const checkNameUser = await User.findOne({ _id: id, isDeleted: false });
+    if (!checkNameUser) {
+      throw new Error(`User ${data.name} already exists`);
+    }
     const userUpdate = await User.findOneAndUpdate(
       {
         _id: id,
@@ -164,7 +172,7 @@ export const updateUser = async (
         },
       });
     } else {
-      throw new Error("Not found user or deleted");
+      throw new Error("Not found user");
     }
   } catch (err: any) {
     next(err);
@@ -194,10 +202,7 @@ export const deleteUser = async (
     if (userDelete) {
       delete userDelete.isDeleted;
       res.status(200).send({
-        message: "Delete user successfully!",
-        data: {
-          user: userDelete,
-        },
+        message: `User ${userDelete.name} deleted successfully`,
       });
     } else {
       throw new Error("Not found user or deleted");

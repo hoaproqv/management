@@ -13,7 +13,7 @@ import { validateId } from "../validate/validateIdMongoBD";
 
 router.get("/", getUsers);
 
-router.get("/:id/task", getAllTasksOfUser);
+router.get("/:id", getAllTasksOfUser);
 
 router.post("/", validateCreateUserRequest, createUser);
 

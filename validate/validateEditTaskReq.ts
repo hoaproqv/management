@@ -5,9 +5,13 @@ const editTaskRequestBodySchema = Joi.object()
   .keys({
     name: Joi.string(),
     description: Joi.string(),
-    status: Joi.string()
-      .required()
-      .valid("pending", "working", "review", "done", "archive"),
+    status: Joi.string().valid(
+      "pending",
+      "working",
+      "review",
+      "done",
+      "archive",
+    ),
     assignee: Joi.string().length(24),
   })
   .required()

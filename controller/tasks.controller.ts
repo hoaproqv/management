@@ -1,6 +1,7 @@
 import { SortOrder } from "mongoose";
 import Task from "../model/Task";
 import { NextFunction, Request, Response } from "express";
+import User from "../model/User";
 
 /**
  * @route POST api/tasks
@@ -34,10 +35,10 @@ export const createTask = async (
         assignee: req.body.assignee,
         isDeleted: false,
       };
-      await Task.create(data);
+      const taskCreated = await Task.create(data);
       res.status(200).send({
         message: "Create Task Successfully!",
-        data: { task: data },
+        data: { task: taskCreated },
       });
     }
   } catch (err: any) {
@@ -53,11 +54,7 @@ export const getTasks = async (
   req: Request<
     object,
     object,
-    {
-      name: string;
-      description: string;
-      assignee: string;
-    },
+    object,
     {
       page: number;
       limit: number;
@@ -113,7 +110,12 @@ export const getTasks = async (
       }
     }
 
-    let getTasks = await Task.find(query).sort(sort);
+    let getTasks = await Task.find(query)
+      .populate({
+        path: "assignee",
+        model: "User",
+      })
+      .sort(sort);
     const total = Math.ceil(getTasks.length / limit);
 
     if (total > limit) {
@@ -143,7 +145,10 @@ export const getTaskById = async (
 ) => {
   try {
     const { id } = req.params;
-    const task = await Task.findById(id);
+    const task = await Task.findOne({ _id: id, isDeleted: false }).populate({
+      path: "assignee",
+      model: "User",
+    });
     if (task) {
       res.status(200).send({
         message: "Get task successfully!",
@@ -180,26 +185,38 @@ export const updateTask = async (
   try {
     const { id } = req.params;
     const data = req.body;
-    const checkTask = await Task.findById(id);
-    if (checkTask) {
-      let taskUpdate;
-      if (checkTask.status === "done" || "archive") {
-        if (data.status === "archive") {
-          taskUpdate = await Task.findByIdAndUpdate(id, data, { new: true });
-        } else {
-          throw new Error(
-            "You only change status of task from done to archive if status is done",
-          );
-        }
+    const checkTask = await Task.findOne({ _id: id, isDeleted: false });
+    if (!checkTask) {
+      throw new Error("Task not found");
+    }
+    if (data.assignee) {
+      const checkUser = await User.findById(data.assignee);
+      if (!checkUser) {
+        throw new Error("Can't find user with assignee");
+      }
+    }
+
+    let taskUpdate;
+    if (checkTask.status !== "archive") {
+      if (checkTask.status !== "done") {
+        taskUpdate = await Task.findByIdAndUpdate(id, data, {
+          new: true,
+        }).populate({ path: "assignee", model: "User" });
       } else {
-        taskUpdate = await Task.findByIdAndUpdate(id, data, { new: true });
+        if (data.status === "archive") {
+          taskUpdate = await Task.findByIdAndUpdate(id, data, {
+            new: true,
+          }).populate({ path: "assignee", model: "User" });
+        } else {
+          throw new Error("This task can only change its status to archive");
+        }
       }
       res.status(200).send({
         message: "Task updated successfully",
         data: { task: taskUpdate },
       });
     } else {
-      throw new Error("Task not found");
+      throw new Error("Can't change status of task");
     }
   } catch (err: any) {
     next(err);
@@ -217,21 +234,46 @@ export const deleteTask = async (
 ) => {
   try {
     const { id } = req.params;
-    const taskDelete = await Task.findByIdAndUpdate(
-      id,
+    const taskDelete = await Task.findOneAndUpdate(
+      { _id: id, isDeleted: false },
       { isDeleted: true },
       { new: true },
     );
 
     if (taskDelete) {
       res.status(200).send({
-        message: "Delete Task Successfully!",
-        data: { task: taskDelete },
+        message: `Task ${taskDelete.name} deleted successfully`,
       });
     } else {
       throw new Error("Task not found");
     }
   } catch (err: any) {
     next(err);
+  }
+};
+
+export const unassignTask = async (
+  req: Request<{ id: string }, object, object, object, Record<string, any>>,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { id } = req.params;
+    const taskUnassigned = await Task.findOne({
+      _id: id,
+      isDeleted: false,
+    });
+    if (taskUnassigned) {
+      taskUnassigned.set("assignee", undefined, { strict: false });
+      taskUnassigned.save();
+      res.status(200).send({
+        message: `Task ${taskUnassigned.name} unassigned`,
+        data: { task: taskUnassigned },
+      });
+    } else {
+      throw new Error("Task not found");
+    }
+  } catch (error) {
+    next(error);
   }
 };

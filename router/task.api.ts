@@ -6,6 +6,7 @@ import {
   getTaskById,
   updateTask,
   deleteTask,
+  unassignTask,
 } from "../controller/tasks.controller";
 import { validateId } from "../validate/validateIdMongoBD";
 import { validateCreateTaskRequest } from "../validate/validateCreateTaskReq";
@@ -20,5 +21,7 @@ router.post("/", validateCreateTaskRequest, createTask);
 router.put("/:id", validateId, validateEditTaskRequest, updateTask);
 
 router.delete("/:id", validateId, deleteTask);
+
+router.patch("/:id", validateId, unassignTask);
 
 export default router;
